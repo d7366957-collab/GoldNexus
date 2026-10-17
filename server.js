@@ -13,7 +13,6 @@ app.use(express.json());
 app.use(express.static('public'));
 app.use('/admin', express.static('admin'));
 
-// --- API USUARIO ---
 app.get('/api/user/:id', (req, res) => {
     db.get(`SELECT * FROM users WHERE id = ?`, [req.params.id], (err, row) => {
         if (err || !row) return res.status(404).json({ error: 'Usuario no encontrado' });
@@ -26,14 +25,12 @@ app.post('/api/set-language', (req, res) => {
     res.json({ success: true });
 });
 
-// --- API RANKING ---
 app.get('/api/ranking', (req, res) => {
     db.all(`SELECT username, referidos FROM users WHERE banned = 0 ORDER BY referidos DESC LIMIT 10`, [], (err, rows) => {
         res.json(rows);
     });
 });
 
-// --- API TAREAS ---
 app.get('/api/tasks/:userId', (req, res) => {
     const userId = req.params.userId;
     db.all(`SELECT * FROM tasks WHERE active = 1`, [], (err, tasks) => {
@@ -44,11 +41,9 @@ app.get('/api/tasks/:userId', (req, res) => {
     });
 });
 
-// --- API CHECK-IN ---
 app.post('/api/checkin', (req, res) => {
     const { userId } = req.body;
     const today = new Date().toISOString().split('T')[0];
-
     db.get(`SELECT * FROM checkins WHERE user_id = ? AND date = ?`, [userId, today], (err, row) => {
         if (row) return res.status(400).json({ error: 'Ya hiciste check-in hoy' });
         db.run(`INSERT INTO checkins (user_id, date) VALUES (?, ?)`, [userId, today]);
@@ -57,21 +52,18 @@ app.post('/api/checkin', (req, res) => {
     });
 });
 
-// --- API RETIRO ---
 app.post('/api/withdraw', (req, res) => {
     const { userId, amount, wallet } = req.body;
     db.get(`SELECT * FROM users WHERE id = ?`, [userId], (err, user) => {
         if (user.balance < amount) return res.status(400).json({ error: 'Saldo insuficiente' });
         if (amount < 10) return res.status(400).json({ error: 'Mínimo 10 USDT' });
         if (user.referidos < 5) return res.status(400).json({ error: 'Necesitas 5 referidos para retirar' });
-        
         db.run(`UPDATE users SET balance = balance - ?, wallet = ? WHERE id = ?`, [amount, wallet, userId]);
         db.run(`INSERT INTO withdrawals (user_id, amount, wallet) VALUES (?, ?, ?)`, [userId, amount, wallet]);
         res.json({ success: true, message: '✅ Retiro pendiente. Aprobación en 6-24 horas.' });
     });
 });
 
-// --- API ADMIN ---
 app.post('/api/admin/login', (req, res) => {
     if (req.body.password === process.env.ADMIN_PASSWORD) res.json({ success: true });
     else res.status(401).json({ error: 'Contraseña incorrecta' });
