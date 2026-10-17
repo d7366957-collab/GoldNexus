@@ -8,7 +8,6 @@ const db = new sqlite3.Database(dbPath, (err) => {
 });
 
 db.serialize(() => {
-    // Usuarios
     db.run(`CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY,
         username TEXT,
@@ -21,7 +20,6 @@ db.serialize(() => {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
-    // Tareas (Canales)
     db.run(`CREATE TABLE IF NOT EXISTS tasks (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT,
@@ -30,7 +28,6 @@ db.serialize(() => {
         active INTEGER DEFAULT 1
     )`);
 
-    // Tareas completadas
     db.run(`CREATE TABLE IF NOT EXISTS completed_tasks (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
@@ -39,7 +36,6 @@ db.serialize(() => {
         UNIQUE(user_id, task_id)
     )`);
 
-    // Retiros
     db.run(`CREATE TABLE IF NOT EXISTS withdrawals (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
@@ -50,7 +46,6 @@ db.serialize(() => {
         processed_at DATETIME
     )`);
 
-    // Check-in
     db.run(`CREATE TABLE IF NOT EXISTS checkins (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
