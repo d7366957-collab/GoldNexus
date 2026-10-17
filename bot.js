@@ -29,53 +29,70 @@ bot.start((ctx) => {
     });
 });
 
-// Escuchar los datos que envía la Mini App (para verificar tareas)
+bot.command('language', (ctx) => {
+    ctx.reply('🌐 Elige tu idioma / Choose your language / Выберите язык:', 
+        Markup.inlineKeyboard([
+            [Markup.button.callback('🇪🇸 Español', 'lang_es')],
+            [Markup.button.callback('🇬🇧 English', 'lang_en')],
+            [Markup.button.callback('🇷🇺 Русский', 'lang_ru')]
+        ])
+    );
+});
+
+bot.action(/lang_(.+)/, (ctx) => {
+    const lang = ctx.match[1];
+    db.run(`UPDATE users SET language = ? WHERE id = ?`, [lang, ctx.from.id]);
+    ctx.answerCbQuery('✅ Idioma actualizado');
+    ctx.editMessageText('✅ Idioma cambiado. Abre la Mini App para ver los cambios.');
+});
+
+bot.action('change_language', (ctx) => {
+    ctx.reply('🌐 Elige tu idioma / Choose your language / Выберите язык:', 
+        Markup.inlineKeyboard([
+            [Markup.button.callback('🇪🇸 Español', 'lang_es')],
+            [Markup.button.callback('🇬🇧 English', 'lang_en')],
+            [Markup.button.callback('🇷🇺 Русский', 'lang_ru')]
+        ])
+    );
+});
+
 bot.on('web_app_data', async (ctx) => {
     try {
         const data = JSON.parse(ctx.webAppData.data);
-        
         if (data.action === 'verify_task') {
             const { taskId, userId } = data;
-            
             db.get(`SELECT * FROM tasks WHERE id = ? AND active = 1`, [taskId], async (err, task) => {
-                if (!task) return ctx.reply('❌ Tarea no encontrada o inactiva.');
-
+                if (!task) return ctx.reply('❌ Tarea no encontrada.');
                 db.get(`SELECT * FROM completed_tasks WHERE user_id = ? AND task_id = ?`, [userId, taskId], async (err, completed) => {
                     if (completed) return ctx.reply('⚠️ Ya completaste esta tarea.');
-
                     try {
                         const channelUsername = task.link.replace('https://t.me/', '@');
                         const chatMember = await bot.telegram.getChatMember(channelUsername, userId);
-                        
                         if (['member', 'administrator', 'creator'].includes(chatMember.status)) {
                             db.run(`INSERT INTO completed_tasks (user_id, task_id) VALUES (?, ?)`, [userId, taskId]);
                             db.run(`UPDATE users SET balance = balance + ? WHERE id = ?`, [task.reward, userId]);
-
-                            // Lógica del bono extra de 3 tareas
+                            
                             db.get(`SELECT referidor_id FROM users WHERE id = ?`, [userId], (err, user) => {
                                 if (user && user.referidor_id) {
                                     db.get(`SELECT COUNT(*) as total FROM completed_tasks WHERE user_id = ?`, [userId], (err, count) => {
                                         if (count.total === 3) {
                                             db.run(`UPDATE users SET balance = balance + 0.5 WHERE id = ?`, [user.referidor_id]);
-                                            bot.telegram.sendMessage(user.referidor_id, `🎁 ¡Bono extra! Tu referido completó 3 tareas. +0.5 USDT (ficticio).`);
+                                            bot.telegram.sendMessage(user.referidor_id, `🎁 ¡Bono extra! Tu referido completó 3 tareas. +0.5 USDT.`);
                                         }
                                     });
                                 }
                             });
-
-                            ctx.reply(`✅ ¡Tarea completada con éxito! Has ganado ${task.reward} USDT.`);
+                            ctx.reply(`✅ ¡Tarea completada! Has ganado ${task.reward} USDT.`);
                         } else {
-                            ctx.reply('❌ No te has unido al canal todavía. Únete y vuelve a intentarlo.');
+                            ctx.reply('❌ No te has unido al canal todavía.');
                         }
                     } catch (error) {
-                        ctx.reply('❌ Error. Asegúrate de unirte al canal y de que el bot sea administrador.');
+                        ctx.reply('❌ Error. Asegúrate de unirte al canal.');
                     }
                 });
             });
         }
-    } catch (e) {
-        console.log("Error procesando datos de la web app", e);
-    }
+    } catch (e) { console.log("Error web app data", e); }
 });
 
-// ... (El resto de comandos /language y /admin se mantienen igual que en el mensaje anterior)
+module.exports = bot;
